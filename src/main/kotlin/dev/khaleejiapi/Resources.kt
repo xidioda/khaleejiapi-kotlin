@@ -17,15 +17,26 @@ class ValidationResource internal constructor(private val client: KhaleejiAPI) {
         val checks: EmailChecks? = null,
         val suggestion: String? = null,
         val domain: String? = null,
+        val deliverabilityScore: Int? = null,
+        val provider: EmailProvider? = null,
+        val spf: Boolean? = null,
+        val dmarc: Boolean? = null,
+        val normalized: String? = null,
     )
 
     @Serializable
     data class EmailChecks(
         val format: Boolean? = null,
-        val syntax: Boolean? = null,
         val mx: Boolean? = null,
         val disposable: Boolean? = null,
         val role: Boolean? = null,
+        val freeProvider: Boolean? = null,
+    )
+
+    @Serializable
+    data class EmailProvider(
+        val name: String? = null,
+        val type: String? = null,
     )
 
     /** Validate an email address */
@@ -40,9 +51,36 @@ class ValidationResource internal constructor(private val client: KhaleejiAPI) {
         val valid: Boolean,
         val phone: String,
         val formatted: String? = null,
-        val countryCode: String? = null,
         val type: String? = null,
-        val carrier: String? = null,
+        val country: PhoneCountry? = null,
+        val carrier: PhoneCarrier? = null,
+        val formats: PhoneFormats? = null,
+        val areaCode: String? = null,
+        val areaName: String? = null,
+        val portingNote: String? = null,
+        val nationalNumber: String? = null,
+    )
+
+    @Serializable
+    data class PhoneCountry(
+        val name: String? = null,
+        val code: String? = null,
+        val dialCode: String? = null,
+    )
+
+    @Serializable
+    data class PhoneCarrier(
+        val name: String? = null,
+        val mcc: String? = null,
+        val mnc: String? = null,
+    )
+
+    @Serializable
+    data class PhoneFormats(
+        val e164: String? = null,
+        val international: String? = null,
+        val local: String? = null,
+        val rfc3966: String? = null,
     )
 
     /** Validate a phone number */
@@ -71,13 +109,33 @@ class ValidationResource internal constructor(private val client: KhaleejiAPI) {
     @Serializable
     data class VATResult(
         val valid: Boolean,
-        val trn: String,
-        val country: String? = null,
+        val trn: String? = null,
+        val tin: String? = null,
+        val country: VATCountry? = null,
+        val authority: VATAuthority? = null,
+        val vatRate: Double? = null,
+        val vatRateNote: String? = null,
+        val format: String? = null,
+        val checkDigitValid: Boolean? = null,
+    )
+
+    @Serializable
+    data class VATCountry(
+        val code: String? = null,
+        val name: String? = null,
+        val nameAr: String? = null,
+    )
+
+    @Serializable
+    data class VATAuthority(
+        val name: String? = null,
+        val nameAr: String? = null,
+        val website: String? = null,
     )
 
     /** Validate a VAT/TRN number */
-    suspend fun validateVAT(trn: String): VATResult {
-        return client.get("/vat/validate", mapOf("trn" to trn))
+    suspend fun validateVAT(trn: String, countryCode: String? = null): VATResult {
+        return client.get("/vat/validate", mapOf("trn" to trn, "country" to countryCode))
     }
 
     // MARK: - Emirates ID
@@ -85,14 +143,42 @@ class ValidationResource internal constructor(private val client: KhaleejiAPI) {
     @Serializable
     data class EmiratesIDResult(
         val valid: Boolean,
-        val id: String,
+        val id: String? = null,
+        val emiratesId: String? = null,
+        val formatted: String? = null,
+        val components: EmiratesIDComponents? = null,
+        val details: EmiratesIDDetails? = null,
+        val authority: EmiratesIDAuthority? = null,
+        val message: String? = null,
+    )
+
+    @Serializable
+    data class EmiratesIDComponents(
         val nationalityCode: String? = null,
+        val countryCode: String? = null,
         val birthYear: Int? = null,
+        val sequenceNumber: String? = null,
+        val checkDigit: Int? = null,
+    )
+
+    @Serializable
+    data class EmiratesIDDetails(
+        val birthYear: Int? = null,
+        val estimatedAge: Int? = null,
+        val ageRange: String? = null,
+        val generation: String? = null,
+    )
+
+    @Serializable
+    data class EmiratesIDAuthority(
+        val name: String? = null,
+        val nameAr: String? = null,
+        val website: String? = null,
     )
 
     /** Validate a UAE Emirates ID */
     suspend fun validateEmiratesID(id: String): EmiratesIDResult {
-        return client.get("/validation/emirates-id", mapOf("id" to id))
+        return client.get("/emirates-id/validate", mapOf("id" to id))
     }
 
     // MARK: - Saudi ID
@@ -104,7 +190,29 @@ class ValidationResource internal constructor(private val client: KhaleejiAPI) {
         val type: String? = null,
         @SerialName("typeAr") val typeAr: String? = null,
         val nationality: String? = null,
+        val nationalityAr: String? = null,
+        val description: String? = null,
+        val descriptionAr: String? = null,
+        val details: SaudiIDDetails? = null,
+        val authority: SaudiIDAuthority? = null,
         val errors: List<String>? = null,
+    )
+
+    @Serializable
+    data class SaudiIDDetails(
+        val estimatedBirthYearHijri: Int? = null,
+        val estimatedBirthYearGregorian: Int? = null,
+        val estimatedAge: Int? = null,
+        val ageRange: String? = null,
+        val generation: String? = null,
+        val checkDigit: Int? = null,
+    )
+
+    @Serializable
+    data class SaudiIDAuthority(
+        val name: String? = null,
+        val nameAr: String? = null,
+        val website: String? = null,
     )
 
     @Serializable
@@ -122,14 +230,14 @@ class ValidationResource internal constructor(private val client: KhaleejiAPI) {
 
     /** Validate a Saudi National ID or Iqama */
     suspend fun validateSaudiID(id: String): SaudiIDResult {
-        return client.get("/validation/saudi-id", mapOf("id" to id))
+        return client.get("/saudi-id/validate", mapOf("id" to id))
     }
 
     /** Batch validate Saudi IDs (max 100) */
     suspend fun validateSaudiIDBatch(ids: List<String>): SaudiIDBatchResult {
         @Serializable
         data class Body(val ids: List<String>)
-        return client.post("/validation/saudi-id", Body(ids))
+        return client.post("/saudi-id/validate", Body(ids))
     }
 }
 
@@ -170,15 +278,47 @@ class GeoResource internal constructor(private val client: KhaleejiAPI) {
 
     @Serializable
     data class GeocodeResult(
-        val address: String? = null,
-        val latitude: Double,
-        val longitude: Double,
-        val country: String? = null,
+        val results: List<GeocodeItem> = emptyList(),
+        val attribution: String? = null,
     )
 
-    /** Geocode an address */
-    suspend fun geocode(address: String): GeocodeResult {
-        return client.get("/geocode", mapOf("address" to address))
+    @Serializable
+    data class GeocodeItem(
+        val name: String? = null,
+        val nameAr: String? = null,
+        val lat: Double,
+        val lng: Double,
+        val country: String? = null,
+        val countryAr: String? = null,
+        val countryCode: String? = null,
+        val type: String? = null,
+        val address: GeocodeAddress? = null,
+        val osmId: Long? = null,
+        val importance: Double? = null,
+        val boundingBox: GeocodeBoundingBox? = null,
+    )
+
+    @Serializable
+    data class GeocodeAddress(
+        val road: String? = null,
+        val neighbourhood: String? = null,
+        val city: String? = null,
+        val state: String? = null,
+        val postcode: String? = null,
+        val full: String? = null,
+    )
+
+    @Serializable
+    data class GeocodeBoundingBox(
+        val south: Double,
+        val north: Double,
+        val west: Double,
+        val east: Double,
+    )
+
+    /** Geocode an address or coordinates */
+    suspend fun geocode(q: String, country: String? = null, lang: String? = null): GeocodeResult {
+        return client.get("/geocode", mapOf("q" to q, "country" to country, "lang" to lang))
     }
 }
 
@@ -225,8 +365,13 @@ class FinanceResource internal constructor(private val client: KhaleejiAPI) {
     @Serializable
     data class HolidaysResult(
         val country: String,
+        val countryName: String? = null,
         val year: Int,
+        val weekends: List<String>? = null,
         val holidays: List<Holiday>,
+        val totalDays: Int? = null,
+        val availableYears: List<Int>? = null,
+        val nextHoliday: NextHoliday? = null,
     )
 
     @Serializable
@@ -234,14 +379,36 @@ class FinanceResource internal constructor(private val client: KhaleejiAPI) {
         val name: String,
         val nameAr: String? = null,
         val date: String,
+        val endDate: String? = null,
         val type: String,
+        val sector: String? = null,
+        val dayOfWeek: String? = null,
+        val daysUntil: Int? = null,
+        val isPast: Boolean? = null,
+        val note: String? = null,
+    )
+
+    @Serializable
+    data class NextHoliday(
+        val name: String? = null,
+        val date: String? = null,
+        val daysUntil: Int? = null,
     )
 
     /** Get public holidays for a GCC country */
-    suspend fun getHolidays(country: String = "AE", year: Int? = null): HolidaysResult {
+    suspend fun getHolidays(
+        country: String = "AE",
+        year: Int? = null,
+        mode: String? = null,
+        date: String? = null,
+        month: Int? = null,
+    ): HolidaysResult {
         return client.get("/holidays", mapOf(
             "country" to country,
             "year" to year?.toString(),
+            "mode" to mode,
+            "date" to date,
+            "month" to month?.toString(),
         ))
     }
 
@@ -461,6 +628,36 @@ class UtilityResource internal constructor(private val client: KhaleejiAPI) {
         val riskScore: Int,
         val riskLevel: String,
         val recommendation: String? = null,
+        val signals: List<FraudSignal>? = null,
+        val ipIntelligence: FraudIpIntelligence? = null,
+        val crossFieldAnalysis: List<FraudCrossField>? = null,
+    )
+
+    @Serializable
+    data class FraudSignal(
+        val field: String? = null,
+        val risk: String? = null,
+        val score: Int? = null,
+        val reason: String? = null,
+    )
+
+    @Serializable
+    data class FraudIpIntelligence(
+        val country: String? = null,
+        val isTorExitNode: Boolean? = null,
+        val isAnonymousVpn: Boolean? = null,
+        val isPublicProxy: Boolean? = null,
+        val isHostingProvider: Boolean? = null,
+        val isResidentialProxy: Boolean? = null,
+        val isp: String? = null,
+        val organization: String? = null,
+    )
+
+    @Serializable
+    data class FraudCrossField(
+        val type: String? = null,
+        val risk: String? = null,
+        val detail: String? = null,
     )
 
     @Serializable
@@ -468,11 +665,12 @@ class UtilityResource internal constructor(private val client: KhaleejiAPI) {
         val ip: String? = null,
         val email: String? = null,
         val phone: String? = null,
+        val name: String? = null,
     )
 
     /** Check for fraud */
-    suspend fun fraudCheck(ip: String? = null, email: String? = null, phone: String? = null): FraudResult {
-        return client.post("/fraud/check", FraudBody(ip, email, phone))
+    suspend fun fraudCheck(ip: String? = null, email: String? = null, phone: String? = null, name: String? = null): FraudResult {
+        return client.post("/fraud/check", FraudBody(ip, email, phone, name))
     }
 
     @Serializable
